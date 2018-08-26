@@ -4,7 +4,7 @@ ZF.Canvas
 */
 (function(){
     var Z=ZF,PT=PathType;
-    Z.packages('canvas');
+    Z.packages('zf.display.canvas');
     
     var CanvasManager = new (function(){
         var ct = document.createElement('canvas').getContext('2d');
@@ -91,7 +91,7 @@ ZF.Canvas
         startup:function(){
         },
         setSize:function(w,h){
-            ZF.paramCheck([w,h],Number,'setSize()');
+            ZF.paramCheck(Number,2);
             var vo = this.$$._vals();
             vo.width = w; vo.height = h;
             vo.canvas.style.width = vo.width+'px';

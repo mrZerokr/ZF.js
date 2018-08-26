@@ -4,7 +4,7 @@ ZF.Geom
 */
 (function(){
 var Z=ZF,CN;
-Z.packages('geom');
+Z.packages('zf.geom');
 
 Z.global()
 .class(
@@ -80,11 +80,11 @@ Z.global()
         return Math.sqrt( x*x + y*y );
     },
     polar:function(D,A){
-        ZF.paramCheck([D,A],Number,'polar()');
+        ZF.paramCheck(Number,2);
         return new Z.Point().polar(D,A);
     },
     interpolate:function(p1,p2,f){
-        ZF.paramCheck([p1,p2,f],[Z.Point,Z.Point,Number],'interpolate()');
+        ZF.paramCheck([Z.Point,Z.Point,Number],3);
         return new Z.Point().interpolate(p1,p2,f);
     },
     degree:function(p1,p2){
@@ -260,7 +260,7 @@ Z.global().class(
 })
 .override( function toString(){
     var v = this.$$._vals();
-    return '(x:'+v.x+', y:'+v.y+', width:'+v.width+', height:'+v.height+')[ZF Rectangle]';
+    return '(x:'+v.x+', y:'+v.y+', width:'+v.width+', height:'+v.height+')';
 })
 ;
     
@@ -452,6 +452,14 @@ Z.global()
         })
     }
 )
+.override(function setProp(p,v){
+    switch(p){
+        case'a':case'b':case'c':case'd':case'tx':case'ty':
+            this.$$._val(p,Number(v)||0);
+            break;
+        default:this.$$._set(p,v);
+    }
+})
 .proto({
     clone:function(){
         var o = this.$$._vals();
@@ -499,14 +507,15 @@ Z.global()
     setTo:function(aa,ba,ca,da,txa,tya){
         
     },
-    toString:function(){
-        
-    },
     transformPoint:function(point){
         
     },
     translate:function(dx,dy){
         
+    },
+    toString:function(){
+        var o=this.$$._vals();
+        return '(a='+o.a+', b='+o.b+', c='+o.c+', d='+o.d+', tx='+o.tx+', ty='+o.ty+')';
     }
 })
 ;

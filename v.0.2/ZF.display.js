@@ -28,7 +28,7 @@ ZF.Display
 */
 (function(){
     var Z=ZF,PT=PathType;
-    Z.packages('display');
+    Z.packages('zf.display');
     
     
 Z.global()
@@ -112,7 +112,8 @@ Z.global()
 })
 .static({
     interpolateColor:function(c1,c2,p){
-        ZF.paramCheck([c1,c2,p],Number,'interpolateColor()');
+        var E;
+        if(E=ZF.paramError(Number,3))throw new E[0](E[1]);
         var a1=c1>>24&0xFF,r1=c1>>16&0xFF,
             g1=c1>>8&0xFF,b1=c1&0xFF,
             a2=c2>>24&0xFF,r2=c2>>16&0xFF,
@@ -301,7 +302,6 @@ Z.global()
 )
 .proto({
     roundRect:function(x,y,w,h,ew,eh){
-        ZF.paramCheck([x,y,w,h],Number,'roundRect()');
         if(!ew)ew=Math.min(w,h)/2;
         if(!eh)eh=ew;
         var r=x+w,b=y+h,path=new Path();
@@ -489,25 +489,279 @@ var _getBetweenPoints = function(ps){
     
     
     
-    Z.extends(Z.EventDispatcher)
-    .class(
-        function DisplayObject(){
-            Z.init(this);
-        }
-    )
-    ;
-    Z.extends(Z.DisplayObject).class(
-        function DisplayObjectContainer(){
-            Z.init(this);
-        }
-    );
     
-    Z.extends(Z.DisplayObject)
-    .class(
-        function Shape(){
-            Z.init(this);
+    
+    
+    
+Z.interface('IBitmapDrawable');
+Z.interface('IGraphicsData');
+Z.interface('IGraphicsPath');
+Z.interface('IGraphicsFill');
+Z.interface('IGraphicsStroke');
+    
+    
+    
+
+Z.global().implements(Z.IBitmapDrawable).class(
+    function BitmapData(width,height,transparent,fillColor){
+        Z.init(this,null,{
+            width:Number(width)||1,height:Number(height)||1,transparent:(transparent)?true:false,fillColor:Number(fillColor)||0xFFFFFFFF})})
+.reads('width,height,transparent,fillColor')
+.proto({
+    applyFilter:function(source,rect,dest,filter){},
+    clone:function(){},
+    colorTransform:function(rect,colorTransform){},
+    compare:function(other){},
+    copyChannel:function(source,rect,dest,from,to){},
+    //(sourceBitmapData:BitmapData, sourceRect:Rectangle, destPoint:Point, alphaBitmapData:BitmapData = null, alphaPoint:Point = null, mergeAlpha:Boolean = false):void
+    copyPixels:function(s,r,d,ab,ap,ma){},
+    copyPixelToByteArray:function(rect,data){},
+    //(source:IBitmapDrawable, matrix:Matrix = null, colorTransform:flash.geom:ColorTransform = null, blendMode:String = null, clipRect:Rectangle = null, smoothing:Boolean = false):void
+    draw:function(s,m,ct,bm,cr,sm){},
+    encode:function(rect,compressor,byteArray){},
+    fillRect:function(rect,color){},
+    floodFill:function(x,y,color){},
+    //(sourceRect:Rectangle, filter:BitmapFilter):Rectangle
+    generateFilterRect:function(source,filter){},
+    //(mask:uint, color:uint, findColor:Boolean = true):Rectangle
+    getColorBoundsRect:function(mask,color,findColor){},
+    getPixel:function(x,y){},
+    getPixel32:function(x,y){},
+    getPixels:function(rect){},
+    histogram:function(rect){},
+    //(firstPoint:Point, firstAlphaThreshold:uint, secondObject:Object, secondBitmapDataPoint:Point = null, secondAlphaThreshold:uint = 1):Boolean
+    hitTest:function(fp,fa,so,sb,sa){},
+    lock:function(){},
+    //(sourceBitmapData:BitmapData, sourceRect:Rectangle, destPoint:Point, redMultiplier:uint, greenMultiplier:uint, blueMultiplier:uint, alphaMultiplier:uint):void
+    merge:function(sb,sr,dp,rm,gm,bm,am){},
+    //(randomSeed:int, low:uint = 0, high:uint = 255, channelOptions:uint = 7, grayScale:Boolean = false):void
+    noise:function(rs,w,h,co,gs){},
+    //(sourceBitmapData:BitmapData, sourceRect:Rectangle, destPoint:Point, redArray:Array = null, greenArray:Array = null, blueArray:Array = null, alphaArray:Array = null):void
+    paletteMap:function(sb,sr,dp,ra,ga,ba,aa){},
+    //(baseX:Number, baseY:Number, numOctaves:uint, randomSeed:int, stitch:Boolean, fractalNoise:Boolean, channelOptions:uint = 7, grayScale:Boolean = false, offsets:Array = null):void
+    perlinNoise:function(bx,by,no,rs,st,fn,co,gs,os){},
+    //(sourceBitmapData:BitmapData, sourceRect:Rectangle, destPoint:Point, randomSeed:int = 0, numPixels:int = 0, fillColor:uint = 0):int
+    pixelDissolve:function(sb,sr,dp,rs,np,fc){},
+    scroll:function(x,y){},
+    setPixel:function(x,y,color){},
+    setPixel32:function(x,y,color){},
+    setPixels:function(rect,data){},
+    //(sourceBitmapData:BitmapData, sourceRect:Rectangle, destPoint:Point, operation:String, threshold:uint, color:uint = 0, mask:uint = 0xFFFFFFFF, copySource:Boolean = false):uint
+    threshold:function(sb,sr,dp,op,th,cr,mk,cs){},
+    unlock:function(rect){}
+})
+.override(function dispose(){
+    this.super.dispose();
+})
+.static(CONST,{RED:1,GREEN:2,BLUE:4,ALPHA:8})
+;
+   
+    
+    
+    
+    
+
+var GPW = {EVEN_ODD:'eventOdd',NON_ZERO:'nonZero'};
+var GPC = {NO_OP:0,MOVE_TO:1,LINE_TO:2,CURVE_TO:3,WIDE_MOVE_TO:4,WIDE_LINE_TO:5,CUBIC_CURVE_TO:6};
+var GRT = {LINEAR:'linear',RADIAL:'radial'};
+    
+Z.class('GraphicsPathWinding').static(CONST,GPW);
+Z.class('GraphicsPathCommand').static(CONST,GPC);
+Z.global().class('GradientType').static(CONST,GRT);
+    
+Z.implements(Z.IGraphicsData,Z.IGraphicsPath).class(
+    function GraphicsPath(c,d,w){
+        Z.init(this);
+        switch(arguments.length){
+            case 3:this.winding=w;
+            case 2:this.data=d;
+            case 1:this.commands=c;}})
+.public('commands',[],Array)
+.public('data',[],Array)
+.public('winding','',String)
+.proto({
+    cubicCurveTo:function(ax,ay,bx,by,cx,cy){
+        this.commands.push(GPC.CUBIC_CURVE_TO);
+        this.data.push(ax,ay,bx,by,cx,cy);},
+    curveTo:function(ax,ay,bx,by){
+        this.commands.push(GPC.CURVE_TO);
+        this.data.push(ax,ay,bx,by);},
+    lineTo:function(x,y){
+        this.commands.push(GPC.LINE_TO);
+        this.data.push(x,y);},
+    moveTo:function(x,y){
+        this.commands.push(GPC.MOVE_TO);
+        this.data.push(x,y);},
+    wideLineTo:function(x,y){
+        this.commands.push(GPC.WIDE_LINE_TO);
+        this.data.push(x,y,x,y);},
+    wideMoveTo:function(x,y){
+        this.commands.push(GPC.WIDE_MOVE_TO);
+        this.data.push(x,y,x,y);},
+    clear:function(){
+        this.commands.splice(0,this.commands.length);
+        this.data.splice(0,this.data.length);}})
+.static(CONST,GPC)
+;
+Z.implements(Z.IGraphicsData,Z.IGraphicsPath).class(
+    function GraphicsTrianglePath(v,i,u,c){
+        Z.init(this);
+        if(v)this.vertices=v;
+        if(i)this.indices=i;
+        if(u)this.uvtData=u;
+        if(c)this.culling=c;})
+.public('culling','none',String)
+.public('indices',[],Array)
+.public('uvtData',[],Array)
+.public('vertices',[],Array)
+;
+Z.implements(Z.IGraphicsData,Z.IGraphicsFill).class(
+    function GraphicsBitmapFill(b,m,r,s){
+        Z.init(this);
+        if(b)this.bitmapData=b;
+        if(m)this.matrix=m;
+        if(r)this.repeat=r;
+        if(s)this.smooth=s;})
+.public('bitmapData',null,Z.BitmapData)
+.public('matrix',null,Z.Matrix)
+.public('repeat',true,Boolean)
+.public('smooth',false,Boolean)
+;   
+Z.implements(Z.IGraphicsData,Z.IGraphicsFill).class(
+    function GraphicsEndFill(){
+        Z.init(this);})
+;
+Z.implements(Z.IGraphicsData,Z.IGraphicsFill).class(
+    function GraphicsGradientFill(){
+        Z.init(this);
+    }
+)
+.public('alphas',[],Array)
+.public('colors',[],Array)
+.public('focalPointRatio',0,Number)
+.public('interpolationMethod','rgb',String)
+.public('matrix',null,Z.Matrix)
+.public('ratios',[],Array)
+.public('spreadMethod','pad',String)
+.public('type','linear',String)
+;
+Z.implements(Z.IGraphicsData,Z.IGraphicsFill).class(
+    function GraphicsSolidFill(c,a){
+        Z.init(this);
+        if(c)this.color=c;
+        if(a)this.alpha=a;})
+.public('alpha',1,Number)
+.public('color',0,Number)
+;
+Z.implements(Z.IGraphicsData,Z.IGraphicsStroke).class(
+    function GraphicsStroke(){
+        Z.init(this);
+    }
+)
+.public('caps','',String)
+.public('fill',null,Z.IGraphicsFill)
+.public('joints','',String)
+.public('miterLimit',3,Number)
+.public('pixelHinting',false,Boolean)
+.public('scaleMode','normal',String)
+.public('thickness',1,Number)
+;
+    
+    
+ 
+    
+Z.class(
+    function Graphics(){
+        Z.init(this,null);
+    }
+)
+.prop('_data',{value:[]})
+.proto({
+    beginBitmapFill:function(b,m,r,s){
+        ZF.paramCheck([Z.BitmapData,Z.Matrix,Boolean,Boolean],1,null,this);
+//        var E;if(E=ZF.paramError(
+//            [Z.BitmapData,Z.Matrix,Boolean,Boolean],1))throw E[0](E[1]);
+        this._data.push(new Z.GraphicsBitmapFill(b,m,r,s));
+    },
+    beginFill:function(c,a){
+        ZF.paramCheck([Number],1,null,this);
+        this._data.push(new Z.GraphicsSolidFill(c,a));
+    },
+    //(type:String, colors:Array, alphas:Array, ratios:Array, matrix:Matrix = null, spreadMethod:String = "pad", interpolationMethod:String = "rgb", focalPointRatio:Number = 0):void
+    beginGradientFill:function(t,c,a,r,m,s,i,f){
+        ZF.paramCheck([String,Array,Array,Array,
+                       Z.Matrix,String,String,Number],4,null,this);
+        this._data.push(new Z.GraphicsGradientFill(t,c,a,r,m,s,i,f));
+    },
+    clear:function(){
+        var gd,n = this._data.length;
+        while(n--){
+            gd = this._data[n];
+            if(gd.dispose) gd.dispose();
+            this._data.splice(n,1);
         }
-    );
+    },
+    copyFrom:function(source){
+        ZF.paramCheck([Z.Graphics],1,null,this);
+        var n,d=source._data;
+        for( n = 0; n < d.length; n++ ){
+            console.log( d[n] );
+        }
+    },
+    cubicCurveTo:function(ax,ay,bx,by,cx,cy){
+        this.addData([PathType.BEZIER,ax,ay,bx,by,cx,cy]);
+        return this;
+    },
+    drawCircle:function(x,y,radius){
+        
+    },
+    drawEllipse:function(x,y,width,height){
+        
+    },
+    drawGraphicsData:function(datas){
+        
+    },
+    //drawPath(commands:Vector.<int>, data:Vector.<Number>, winding:String = "evenOdd"):void
+    drawPath:function(cs,ds,wd){
+        
+    },
+    //drawRect(x:Number, y:Number, width:Number, height:Number):void
+    drawRect:function(x,y,w,h){
+        
+    },
+    //drawRoundRect(x:Number, y:Number, width:Number, height:Number, ellipseWidth:Number, ellipseHeight:Number = NaN):void
+    drawRoundRect:function(x,y,w,h,ew,eh){
+        
+    }
+})
+;
+Z.Graphics.prototype.cubicCurveTo = Z.Path.prototype.bezierTo;
+    
+    
+Z.extends(Z.EventDispatcher)
+.class(
+    function DisplayObject(){
+        Z.init(this);
+    }
+)
+;
+Z.extends(Z.DisplayObject).class(
+    function DisplayObjectContainer(){
+        Z.init(this);
+    }
+);
+
+Z.extends(Z.DisplayObject)
+.class(
+    function Shape(){
+        Z.init(this);
+    }
+);
+    
+    
+    
+    
+    
 })();
 
 
